@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Temark Lunar Lander - IT Easter Egg</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            color: #0f0;
+        }
+        
+        #gameContainer {
+            text-align: center;
+            position: relative;
+        }
+        
+        canvas {
+            border: 2px solid #0f0;
+            display: block;
+            margin: 0 auto;
+            background: #000;
+        }
+        
+        #stats {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            text-align: left;
+            font-size: 14px;
+            text-shadow: 0 0 5px #0f0;
+        }
+        
+        #controls {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #0f0;
+            text-shadow: 0 0 5px #0f0;
+        }
+        
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: #0f0;
+            text-align: center;
+            display: none;
+            text-shadow: 0 0 10px #0f0;
+        }
+        
+        .stat-label {
+            color: #090;
+        }
+        
+        .warning {
+            color: #f00 !important;
+            text-shadow: 0 0 5px #f00 !important;
+        }
+        
+        .safe {
+            color: #0f0 !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="stats">
+            <div><span class="stat-label">SCORE:</span> <span id="score">0</span></div>
+            <div><span class="stat-label">FUEL:</span> <span id="fuel">1000</span></div>
+            <div><span class="stat-label">ALTITUDE:</span> <span id="altitude">0</span> m</div>
+            <div><span class="stat-label">H-SPEED:</span> <span id="hSpeed">0.00</span> m/s</div>
+            <div><span class="stat-label">V-SPEED:</span> <span id="vSpeed">0.00</span> m/s</div>
+        </div>
+        <div id="gameOver">
+            <div id="gameOverText"></div>
+            <div style="margin-top: 20px; font-size: 16px;">Press SPACE to play again</div>
+        </div>
+        <div id="controls">
+            <strong>CONTROLS:</strong> ↑ or W = Main Thrust | ← → or A D = Rotate | SPACE = Start/Restart
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Game state
+        let gameState = 'waiting'; // waiting, playing, landed, crashed
+        let score = 0;
+        let level = 1;
+        
+        // Lander properties
+        let lander = {
+            x: 400,
+            y: 100,
+            vx: 0,
+            vy: 0,
+            angle: 0,
+            fuel: 1000,
+            width: 20,
+            height: 25,
+            thrustPower: 0.5,
+            rotationSpeed: 0.1
+        };
+        
+        // Physics
+        const gravity = 0.05;
+        const maxSafeLandingSpeed = 2;
+        const maxSafeLandingAngle = 15;
+        
+        // Landing pads
+        let landingPads = [];
+        
+        // Terrain
+        let terrain = [];
+        
+        // Particles for thrust effect
+        let particles = [];
+        
+        // Stars for background
+        let stars = [];
+        
+        // Input handling
+        const keys = {};
+        
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            if (e.key === ' ' && (gameState === 'waiting' || gameState === 'landed' || gameState === 'crashed')) {
+                resetGame();
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+        
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < 100; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height * 0.7,
+                    size: Math.random() * 2
+                });
+            }
+        }
+        
+        function generateTerrain() {
+            terrain = [];
+            landingPads = [];
+            
+            let x = 0;
+            let y = canvas.height - 100 + Math.random() * 50;
+            
+            while (x < canvas.width) {
+                // Randomly decide if this should be a landing pad
+                if (Math.random() < 0.2 && x > 100 && x < canvas.width - 150) {
+                    // Create landing pad
+                    const padWidth = 60 + Math.random() * 40;
+                    const multiplier = Math.floor(Math.random() * 3) + 1;
+                    landingPads.push({
+                        x: x,
+                        y: y,
+                        width: padWidth,
+                        multiplier: multiplier
+                    });
+                    
+                    terrain.push({ x: x, y: y });
+                    terrain.push({ x: x + padWidth, y: y });
+                    x += padWidth;
+                } else {
+                    // Create rough terrain
+                    terrain.push({ x: x, y: y });
+                    x += 20 + Math.random() * 40;
+                    y = canvas.height - 100 + Math.random() * 100;
+                    y = Math.max(canvas.height - 150, Math.min(canvas.height - 50, y));
+                }
+            }
+            terrain.push({ x: canvas.width, y: y });
+        }
+        
+        function resetGame() {
+            lander = {
+                x: 100 + Math.random() * 600,
+                y: 100,
+                vx: Math.random() * 2 - 1,
+                vy: 0,
+                angle: 0,
+                fuel: 1000,
+                width: 20,
+                height: 25,
+                thrustPower: 0.5,
+                rotationSpeed: 0.1
+            };
+            
+            particles = [];
+            generateTerrain();
+            gameState = 'playing';
+            document.getElementById('gameOver').style.display = 'none';
+        }
+        
+        function updateLander() {
+            if (gameState !== 'playing') return;
+            
+            // Apply gravity
+            lander.vy += gravity;
+            
+            // Handle input
+            if ((keys['ArrowLeft'] || keys['a'] || keys['A']) && lander.fuel > 0) {
+                lander.angle -= lander.rotationSpeed;
+                lander.fuel -= 0.5;
+            }
+            if ((keys['ArrowRight'] || keys['d'] || keys['D']) && lander.fuel > 0) {
+                lander.angle += lander.rotationSpeed;
+                lander.fuel -= 0.5;
+            }
+            if ((keys['ArrowUp'] || keys['w'] || keys['W']) && lander.fuel > 0) {
+                // Apply thrust in the direction the lander is facing
+                lander.vx += Math.sin(lander.angle) * lander.thrustPower;
+                lander.vy -= Math.cos(lander.angle) * lander.thrustPower;
+                lander.fuel -= 2;
+                
+                // Create thrust particles
+                for (let i = 0; i < 3; i++) {
+                    particles.push({
+                        x: lander.x - Math.sin(lander.angle) * 10,
+                        y: lander.y + Math.cos(lander.angle) * 15,
+                        vx: (Math.random() - 0.5) * 2 - Math.sin(lander.angle) * 3,
+                        vy: Math.random() * 2 + Math.cos(lander.angle) * 3,
+                        life: 20,
+                        color: `hsl(${Math.random() * 60}, 100%, 50%)`
+                    });
+                }
+            }
+            
+            // Update position
+            lander.x += lander.vx;
+            lander.y += lander.vy;
+            
+            // Keep fuel from going negative
+            lander.fuel = Math.max(0, lander.fuel);
+            
+            // Check boundaries
+            if (lander.x < 0) lander.x = canvas.width;
+            if (lander.x > canvas.width) lander.x = 0;
+            
+            // Check landing/crash
+            checkCollision();
+        }
+        
+        function checkCollision() {
+            const altitude = getAltitude();
+            
+            if (altitude <= 0) {
+                const speed = Math.sqrt(lander.vx * lander.vx + lander.vy * lander.vy);
+                const angleDegrees = Math.abs(lander.angle * 180 / Math.PI);
+                
+                // Check if on landing pad
+                let onPad = false;
+                let padMultiplier = 0;
+                
+                for (let pad of landingPads) {
+                    if (lander.x >= pad.x && lander.x <= pad.x + pad.width) {
+                        onPad = true;
+                        padMultiplier = pad.multiplier;
+                        break;
+                    }
+                }
+                
+                if (onPad && speed < maxSafeLandingSpeed && angleDegrees < maxSafeLandingAngle) {
+                    // Successful landing
+                    gameState = 'landed';
+                    const points = Math.floor(1000 * padMultiplier + lander.fuel);
+                    score += points;
+                    document.getElementById('gameOverText').innerHTML = 
+                        `<div style="color: #0f0;">SUCCESSFUL LANDING!</div>
+                         <div style="font-size: 16px; margin-top: 10px;">
+                         Landing Zone: ${padMultiplier}X<br>
+                         Fuel Bonus: ${lander.fuel}<br>
+                         Points Earned: ${points}<br>
+                         Total Score: ${score}</div>`;
+                } else {
+                    // Crash
+                    gameState = 'crashed';
+                    document.getElementById('gameOverText').innerHTML = 
+                        `<div style="color: #f00;">CRASH!</div>
+                         <div style="font-size: 16px; margin-top: 10px;">
+                         ${!onPad ? 'Missed landing pad' : 
+                           speed >= maxSafeLandingSpeed ? `Too fast! (${speed.toFixed(1)} m/s)` :
+                           `Bad angle! (${angleDegrees.toFixed(1)}°)`}<br>
+                         Final Score: ${score}</div>`;
+                    
+                    // Create explosion particles
+                    for (let i = 0; i < 20; i++) {
+                        particles.push({
+                            x: lander.x,
+                            y: lander.y,
+                            vx: (Math.random() - 0.5) * 10,
+                            vy: (Math.random() - 0.5) * 10,
+                            life: 30,
+                            color: `hsl(${Math.random() * 60}, 100%, 50%)`
+                        });
+                    }
+                }
+                
+                document.getElementById('gameOver').style.display = 'block';
+            }
+        }
+        
+        function getAltitude() {
+            // Find the terrain height at lander's x position
+            for (let i = 0; i < terrain.length - 1; i++) {
+                if (lander.x >= terrain[i].x && lander.x <= terrain[i + 1].x) {
+                    // Interpolate height
+                    const t = (lander.x - terrain[i].x) / (terrain[i + 1].x - terrain[i].x);
+                    const terrainY = terrain[i].y + t * (terrain[i + 1].y - terrain[i].y);
+                    return terrainY - (lander.y + lander.height / 2);
+                }
+            }
+            return canvas.height - lander.y;
+        }
+        
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+        
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw stars
+            ctx.fillStyle = '#fff';
+            for (let star of stars) {
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Draw terrain
+            ctx.strokeStyle = '#0f0';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 0; i < terrain.length; i++) {
+                if (i === 0) {
+                    ctx.moveTo(terrain[i].x, terrain[i].y);
+                } else {
+                    ctx.lineTo(terrain[i].x, terrain[i].y);
+                }
+            }
+            ctx.lineTo(canvas.width, canvas.height);
+            ctx.lineTo(0, canvas.height);
+            ctx.closePath();
+            ctx.stroke();
+            
+            // Draw landing pads
+            for (let pad of landingPads) {
+                ctx.strokeStyle = pad.multiplier === 3 ? '#ff0' : 
+                                  pad.multiplier === 2 ? '#0ff' : '#0f0';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(pad.x, pad.y);
+                ctx.lineTo(pad.x + pad.width, pad.y);
+                ctx.stroke();
+                
+                // Draw multiplier
+                ctx.fillStyle = ctx.strokeStyle;
+                ctx.font = '12px Courier New';
+                ctx.fillText(`${pad.multiplier}X`, pad.x + pad.width / 2 - 10, pad.y - 5);
+            }
+            
+            // Draw particles
+            for (let p of particles) {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life / 30;
+                ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+            }
+            ctx.globalAlpha = 1;
+            
+            // Draw lander
+            if (gameState !== 'crashed') {
+                ctx.save();
+                ctx.translate(lander.x, lander.y);
+                ctx.rotate(lander.angle);
+                
+                ctx.strokeStyle = '#0f0';
+                ctx.lineWidth = 2;
+                
+                // Lander body
+                ctx.beginPath();
+                ctx.moveTo(-lander.width/2, lander.height/2);
+                ctx.lineTo(-lander.width/3, -lander.height/2);
+                ctx.lineTo(lander.width/3, -lander.height/2);
+                ctx.lineTo(lander.width/2, lander.height/2);
+                ctx.closePath();
+                ctx.stroke();
+                
+                // Landing legs
+                ctx.beginPath();
+                ctx.moveTo(-lander.width/2, lander.height/2);
+                ctx.lineTo(-lander.width/2 - 5, lander.height/2 + 8);
+                ctx.moveTo(lander.width/2, lander.height/2);
+                ctx.lineTo(lander.width/2 + 5, lander.height/2 + 8);
+                ctx.stroke();
+                
+                ctx.restore();
+            }
+            
+            // Update stats display
+            document.getElementById('score').textContent = score;
+            document.getElementById('fuel').textContent = Math.floor(lander.fuel);
+            document.getElementById('fuel').className = lander.fuel < 200 ? 'warning' : 'safe';
+            document.getElementById('altitude').textContent = Math.floor(getAltitude());
+            document.getElementById('hSpeed').textContent = Math.abs(lander.vx).toFixed(2);
+            document.getElementById('hSpeed').className = Math.abs(lander.vx) > maxSafeLandingSpeed ? 'warning' : 'safe';
+            document.getElementById('vSpeed').textContent = Math.abs(lander.vy).toFixed(2);
+            document.getElementById('vSpeed').className = Math.abs(lander.vy) > maxSafeLandingSpeed ? 'warning' : 'safe';
+        }
+        
+        function gameLoop() {
+            updateLander();
+            updateParticles();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Initialize game
+        initStars();
+        generateTerrain();
+        draw();
+        gameLoop();
+        
+        // Show initial message
+        document.getElementById('gameOverText').innerHTML = 
+            `<div style="color: #0f0;">TEMARK LUNAR LANDER</div>
+             <div style="font-size: 16px; margin-top: 10px;">
+             Land safely on the pads<br>
+             Yellow = 3X | Cyan = 2X | Green = 1X</div>`;
+        document.getElementById('gameOver').style.display = 'block';
+    </script>
+</body>
+</html>
