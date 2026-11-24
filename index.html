@@ -2,103 +2,238 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Temark Lunar Lander - IT Easter Egg</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="theme-color" content="#000000">
+    <title>TEMARK Lunar Lander - IT Easter Egg</title>
     <style>
-        body {
+        html, body {
             margin: 0;
             padding: 0;
+            height: 100%;
+            overflow: hidden;
+            overscroll-behavior: none;
             background: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
+        }
+
+        body {
             font-family: 'Courier New', monospace;
             color: #0f0;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
         }
-        
-        #gameContainer {
-            text-align: center;
+
+        #app {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+            box-sizing: border-box;
+            touch-action: none;
+        }
+
+        #stage {
             position: relative;
+            flex: none;
+            width: 800px;
+            height: 600px;
+            --hud: 14px;
+            --big: 24px;
         }
-        
+
         canvas {
             border: 2px solid #0f0;
+            box-sizing: border-box;
             display: block;
-            margin: 0 auto;
+            width: 100%;
+            height: 100%;
             background: #000;
         }
-        
+
         #stats {
             position: absolute;
-            top: 10px;
+            top: 8px;
             left: 10px;
             text-align: left;
-            font-size: 14px;
+            font-size: var(--hud);
+            line-height: 1.25;
             text-shadow: 0 0 5px #0f0;
+            pointer-events: none;
         }
-        
+
         #controls {
-            margin-top: 20px;
             font-size: 14px;
             color: #0f0;
+            text-align: center;
             text-shadow: 0 0 5px #0f0;
+            padding: 0 10px;
         }
-        
+
         #gameOver {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 24px;
+            width: 90%;
+            font-size: var(--big);
             color: #0f0;
             text-align: center;
             display: none;
             text-shadow: 0 0 10px #0f0;
+            pointer-events: none;
         }
-        
+
+        #gameOver .sub {
+            font-size: 0.67em;
+            margin-top: 0.6em;
+        }
+
+        #restartHint {
+            margin-top: 1.2em;
+            animation: blink 1.2s steps(2, start) infinite;
+        }
+
+        @keyframes blink { to { visibility: hidden; } }
+
         .stat-label {
             color: #090;
         }
-        
+
         .warning {
             color: #f00 !important;
             text-shadow: 0 0 5px #f00 !important;
         }
-        
+
         .safe {
             color: #0f0 !important;
         }
+
+        /* ---------- Touch controls ---------- */
+        .pad {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #0f0;
+            border-radius: 50%;
+            color: #0f0;
+            background: rgba(0, 255, 0, 0.06);
+            font-family: inherit;
+            font-weight: bold;
+            text-shadow: 0 0 6px #0f0;
+            box-shadow: 0 0 8px rgba(0, 255, 0, 0.35);
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        .btn svg { pointer-events: none; filter: drop-shadow(0 0 4px #0f0); }
+
+        .btn.active {
+            background: rgba(0, 255, 0, 0.35);
+            box-shadow: 0 0 18px rgba(0, 255, 0, 0.8);
+        }
+
+        .btn-rotate { width: 72px; height: 72px; font-size: 30px; }
+        .btn-thrust { width: 104px; height: 104px; font-size: 17px; }
+
+        #orientHint {
+            display: none;
+            font-size: 12px;
+            color: #090;
+            text-align: center;
+        }
+
+        body.touch #controls { display: none; }
+        body.touch .pad { display: flex; }
+
+        /* Portrait phone: game on top, both pads in one row along the bottom */
+        body.touch.portrait #app { justify-content: flex-start; padding-top: max(10px, env(safe-area-inset-top)); }
+        body.touch.portrait #padRow {
+            display: flex;
+            width: 100%;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 18px max(18px, env(safe-area-inset-bottom));
+            box-sizing: border-box;
+            margin-top: auto;
+        }
+        body.touch.portrait #orientHint { display: block; }
+
+        /* Landscape phone/tablet: rotate pad left of the game, thrust pad right */
+        body.touch.landscape #app { flex-direction: row; gap: 10px; }
+        body.touch.landscape #padRow { display: contents; }
+        body.touch.landscape #leftPad { order: -1; flex-direction: column; }
+        body.touch.landscape #stageCol { order: 0; }
+        body.touch.landscape #rightPad { order: 1; }
+
+        #padRow { display: none; }
+        #stageCol { display: flex; flex-direction: column; align-items: center; gap: 8px; }
     </style>
 </head>
 <body>
-    <div id="gameContainer">
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
-        <div id="stats">
-            <div><span class="stat-label">SCORE:</span> <span id="score">0</span></div>
-            <div><span class="stat-label">FUEL:</span> <span id="fuel">1000</span></div>
-            <div><span class="stat-label">ALTITUDE:</span> <span id="altitude">0</span> m</div>
-            <div><span class="stat-label">H-SPEED:</span> <span id="hSpeed">0.00</span> m/s</div>
-            <div><span class="stat-label">V-SPEED:</span> <span id="vSpeed">0.00</span> m/s</div>
-        </div>
-        <div id="gameOver">
-            <div id="gameOverText"></div>
-            <div style="margin-top: 20px; font-size: 16px;">Press SPACE to play again</div>
+    <div id="app">
+        <div id="stageCol">
+            <div id="stage">
+                <canvas id="gameCanvas" width="800" height="600"></canvas>
+                <div id="stats">
+                    <div><span class="stat-label">SCORE:</span> <span id="score">0</span></div>
+                    <div><span class="stat-label">FUEL:</span> <span id="fuel">1000</span></div>
+                    <div><span class="stat-label">ALTITUDE:</span> <span id="altitude">0</span> m</div>
+                    <div><span class="stat-label">H-SPEED:</span> <span id="hSpeed">0.00</span> m/s</div>
+                    <div><span class="stat-label">V-SPEED:</span> <span id="vSpeed">0.00</span> m/s</div>
+                </div>
+                <div id="gameOver">
+                    <div id="gameOverText"></div>
+                    <div id="restartHint" class="sub">Press SPACE to start</div>
+                </div>
+            </div>
+            <div id="orientHint">Turn your phone sideways for a bigger view</div>
         </div>
         <div id="controls">
             <strong>CONTROLS:</strong> ↑ or W = Main Thrust | ← → or A D = Rotate | SPACE = Start/Restart
+        </div>
+        <div id="padRow">
+            <div id="leftPad" class="pad">
+                <div class="btn btn-rotate" data-input="left" aria-label="Rotate left">
+                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#0f0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 5.2A8 8 0 1 1 4.6 15"/><path d="M3.5 4v5h5"/></svg>
+                </div>
+                <div class="btn btn-rotate" data-input="right" aria-label="Rotate right">
+                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#0f0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 5.2A8 8 0 1 0 19.4 15"/><path d="M20.5 4v5h-5"/></svg>
+                </div>
+            </div>
+            <div id="rightPad" class="pad">
+                <div class="btn btn-thrust" data-input="thrust" aria-label="Thrust">THRUST</div>
+            </div>
         </div>
     </div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
+        const stage = document.getElementById('stage');
+
         // Game state
         let gameState = 'waiting'; // waiting, playing, landed, crashed
         let score = 0;
         let level = 1;
-        
+        let roundEndedAt = 0;      // time the last round ended, so a held finger can't instantly restart
+
         // Lander properties
         let lander = {
             x: 400,
@@ -112,38 +247,155 @@
             thrustPower: 0.5,
             rotationSpeed: 0.1
         };
-        
-        // Physics
+
+        // Physics (all values are per 1/60 s step)
         const gravity = 0.025;
         const maxSafeLandingSpeed = 2;
         const maxSafeLandingAngle = 15;
-        
+        const STEP_MS = 1000 / 60;
+        const RESTART_DELAY_MS = 600;
+
         // Landing pads
         let landingPads = [];
-        
+
         // Terrain
         let terrain = [];
-        
+
         // Particles for thrust effect
         let particles = [];
-        
+
         // Stars for background
         let stars = [];
-        
-        // Input handling
+
+        // ---------- Input handling ----------
+        // Keyboard and on-screen buttons both feed the same three inputs.
         const keys = {};
-        
+        const touchInput = { left: false, right: false, thrust: false };
+        let isTouch = false;
+
+        function inputLeft()   { return keys['ArrowLeft']  || keys['a'] || keys['A'] || touchInput.left; }
+        function inputRight()  { return keys['ArrowRight'] || keys['d'] || keys['D'] || touchInput.right; }
+        function inputThrust() { return keys['ArrowUp']    || keys['w'] || keys['W'] || touchInput.thrust; }
+
+        function canStart() {
+            return gameState === 'waiting' ||
+                ((gameState === 'landed' || gameState === 'crashed') &&
+                 performance.now() - roundEndedAt > RESTART_DELAY_MS);
+        }
+
         document.addEventListener('keydown', (e) => {
+            if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
             keys[e.key] = true;
-            if (e.key === ' ' && (gameState === 'waiting' || gameState === 'landed' || gameState === 'crashed')) {
+            if (e.key === ' ' && canStart()) {
                 resetGame();
             }
         });
-        
+
         document.addEventListener('keyup', (e) => {
             keys[e.key] = false;
         });
-        
+
+        // Clear held keys if the window loses focus, so the lander doesn't keep thrusting
+        window.addEventListener('blur', () => {
+            for (const k in keys) keys[k] = false;
+            for (const k in touchInput) touchInput[k] = false;
+            document.querySelectorAll('.btn.active').forEach(b => b.classList.remove('active'));
+        });
+
+        // On-screen buttons: each tracks its own pointers, so thrust + rotate work together (multi-touch)
+        document.querySelectorAll('.btn[data-input]').forEach((btn) => {
+            const name = btn.dataset.input;
+            const pointers = new Set();
+            const sync = () => {
+                touchInput[name] = pointers.size > 0;
+                btn.classList.toggle('active', touchInput[name]);
+            };
+            btn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                pointers.add(e.pointerId);
+                try { btn.setPointerCapture(e.pointerId); } catch (_) {}
+                sync();
+            });
+            const release = (e) => { pointers.delete(e.pointerId); sync(); };
+            btn.addEventListener('pointerup', release);
+            btn.addEventListener('pointercancel', release);
+            btn.addEventListener('lostpointercapture', release);
+            btn.addEventListener('contextmenu', (e) => e.preventDefault());
+        });
+
+        // Tap (or click) the game screen to start / play again
+        stage.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            if (canStart()) resetGame();
+        });
+
+        // Stop iOS long-press menus and double-tap zoom
+        document.addEventListener('contextmenu', (e) => e.preventDefault());
+        document.addEventListener('dblclick', (e) => e.preventDefault());
+        document.addEventListener('gesturestart', (e) => e.preventDefault());
+
+        // ---------- Responsive layout ----------
+        function detectTouch() {
+            return window.matchMedia('(pointer: coarse)').matches ||
+                   ('ontouchstart' in window && navigator.maxTouchPoints > 0);
+        }
+
+        function setTouchMode(on) {
+            if (isTouch === on) return;
+            isTouch = on;
+            document.body.classList.toggle('touch', on);
+            updateHints();
+            layout();
+        }
+
+        // A touchscreen laptop may report a fine pointer; switch to touch mode on the first real touch
+        window.addEventListener('touchstart', () => setTouchMode(true), { passive: true });
+
+        function layout() {
+            const vv = window.visualViewport;
+            const vw = vv ? vv.width : window.innerWidth;
+            const vh = vv ? vv.height : window.innerHeight;
+            const landscape = vw > vh;
+            document.body.classList.toggle('landscape', landscape);
+            document.body.classList.toggle('portrait', !landscape);
+
+            let maxW, maxH;
+            if (!isTouch) {
+                // Desktop: keep the original 800x600 size, shrink only if the window is smaller
+                maxW = Math.min(800, vw - 20);
+                maxH = Math.min(600, vh - 60);
+            } else if (landscape) {
+                // Leave room on each side for the button pads
+                const side = vw >= 900 ? 170 : 130;
+                maxW = vw - side * 2 - 20;
+                maxH = vh - 16;
+            } else {
+                // Leave room underneath for the button row
+                maxW = vw - 16;
+                maxH = vh - 190;
+            }
+
+            const w = Math.max(200, Math.min(maxW, maxH * 4 / 3));
+            const h = w * 3 / 4;
+            stage.style.width = Math.round(w) + 'px';
+            stage.style.height = Math.round(h) + 'px';
+
+            const s = w / 800;
+            stage.style.setProperty('--hud', Math.max(10, 14 * s).toFixed(1) + 'px');
+            stage.style.setProperty('--big', Math.max(16, 24 * s).toFixed(1) + 'px');
+        }
+
+        function updateHints() {
+            const verb = isTouch ? 'Tap' : 'Press SPACE';
+            document.getElementById('restartHint').textContent =
+                gameState === 'waiting' ? `${verb} to start` : `${verb} to play again`;
+        }
+
+        window.addEventListener('resize', layout);
+        window.addEventListener('orientationchange', () => setTimeout(layout, 150));
+        if (window.visualViewport) window.visualViewport.addEventListener('resize', layout);
+
+        // ---------- Game ----------
         function initStars() {
             stars = [];
             for (let i = 0; i < 100; i++) {
@@ -154,14 +406,14 @@
                 });
             }
         }
-        
+
         function generateTerrain() {
             terrain = [];
             landingPads = [];
-            
+
             let x = 0;
             let y = canvas.height - 100 + Math.random() * 50;
-            
+
             while (x < canvas.width) {
                 // Randomly decide if this should be a landing pad
                 if (Math.random() < 0.2 && x > 100 && x < canvas.width - 150) {
@@ -174,7 +426,7 @@
                         width: padWidth,
                         multiplier: multiplier
                     });
-                    
+
                     terrain.push({ x: x, y: y });
                     terrain.push({ x: x + padWidth, y: y });
                     x += padWidth;
@@ -188,7 +440,7 @@
             }
             terrain.push({ x: canvas.width, y: y });
         }
-        
+
         function resetGame() {
             lander = {
                 x: 100 + Math.random() * 600,
@@ -202,34 +454,40 @@
                 thrustPower: 0.1,
                 rotationSpeed: 0.05
             };
-            
+
             particles = [];
             generateTerrain();
             gameState = 'playing';
             document.getElementById('gameOver').style.display = 'none';
         }
-        
+
+        function endRound() {
+            roundEndedAt = performance.now();
+            updateHints();
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
         function updateLander() {
             if (gameState !== 'playing') return;
-            
+
             // Apply gravity
             lander.vy += gravity;
-            
+
             // Handle input
-            if ((keys['ArrowLeft'] || keys['a'] || keys['A']) && lander.fuel > 0) {
+            if (inputLeft() && lander.fuel > 0) {
                 lander.angle -= lander.rotationSpeed;
                 lander.fuel -= 0.5;
             }
-            if ((keys['ArrowRight'] || keys['d'] || keys['D']) && lander.fuel > 0) {
+            if (inputRight() && lander.fuel > 0) {
                 lander.angle += lander.rotationSpeed;
                 lander.fuel -= 0.5;
             }
-            if ((keys['ArrowUp'] || keys['w'] || keys['W']) && lander.fuel > 0) {
+            if (inputThrust() && lander.fuel > 0) {
                 // Apply thrust in the direction the lander is facing
                 lander.vx += Math.sin(lander.angle) * lander.thrustPower;
                 lander.vy -= Math.cos(lander.angle) * lander.thrustPower;
                 lander.fuel -= 2;
-                
+
                 // Create thrust particles
                 for (let i = 0; i < 3; i++) {
                     particles.push({
@@ -242,33 +500,33 @@
                     });
                 }
             }
-            
+
             // Update position
             lander.x += lander.vx;
             lander.y += lander.vy;
-            
+
             // Keep fuel from going negative
             lander.fuel = Math.max(0, lander.fuel);
-            
+
             // Check boundaries
             if (lander.x < 0) lander.x = canvas.width;
             if (lander.x > canvas.width) lander.x = 0;
-            
+
             // Check landing/crash
             checkCollision();
         }
-        
+
         function checkCollision() {
             const altitude = getAltitude();
-            
+
             if (altitude <= 0) {
                 const speed = Math.sqrt(lander.vx * lander.vx + lander.vy * lander.vy);
                 const angleDegrees = Math.abs(lander.angle * 180 / Math.PI);
-                
+
                 // Check if on landing pad
                 let onPad = false;
                 let padMultiplier = 0;
-                
+
                 for (let pad of landingPads) {
                     if (lander.x >= pad.x && lander.x <= pad.x + pad.width) {
                         onPad = true;
@@ -276,30 +534,31 @@
                         break;
                     }
                 }
-                
+
                 if (onPad && speed < maxSafeLandingSpeed && angleDegrees < maxSafeLandingAngle) {
                     // Successful landing
                     gameState = 'landed';
-                    const points = Math.floor(1000 * padMultiplier + lander.fuel);
+                    const fuelBonus = Math.floor(lander.fuel);
+                    const points = 1000 * padMultiplier + fuelBonus;
                     score += points;
-                    document.getElementById('gameOverText').innerHTML = 
+                    document.getElementById('gameOverText').innerHTML =
                         `<div style="color: #0f0;">SUCCESSFUL LANDING!</div>
-                         <div style="font-size: 16px; margin-top: 10px;">
+                         <div class="sub">
                          Landing Zone: ${padMultiplier}X<br>
-                         Fuel Bonus: ${lander.fuel}<br>
+                         Fuel Bonus: ${fuelBonus}<br>
                          Points Earned: ${points}<br>
                          Total Score: ${score}</div>`;
                 } else {
                     // Crash
                     gameState = 'crashed';
-                    document.getElementById('gameOverText').innerHTML = 
+                    document.getElementById('gameOverText').innerHTML =
                         `<div style="color: #f00;">CRASH!</div>
-                         <div style="font-size: 16px; margin-top: 10px;">
-                         ${!onPad ? 'Missed landing pad' : 
+                         <div class="sub">
+                         ${!onPad ? 'Missed landing pad' :
                            speed >= maxSafeLandingSpeed ? `Too fast! (${speed.toFixed(1)} m/s)` :
                            `Bad angle! (${angleDegrees.toFixed(1)}°)`}<br>
                          Final Score: ${score}</div>`;
-                    
+
                     // Create explosion particles
                     for (let i = 0; i < 20; i++) {
                         particles.push({
@@ -311,12 +570,14 @@
                             color: `hsl(${Math.random() * 60}, 100%, 50%)`
                         });
                     }
+
+                    if (isTouch && navigator.vibrate) navigator.vibrate(200);
                 }
-                
-                document.getElementById('gameOver').style.display = 'block';
+
+                endRound();
             }
         }
-        
+
         function getAltitude() {
             // Find the terrain height at lander's x position
             for (let i = 0; i < terrain.length - 1; i++) {
@@ -329,25 +590,25 @@
             }
             return canvas.height - lander.y;
         }
-        
+
         function updateParticles() {
             for (let i = particles.length - 1; i >= 0; i--) {
                 const p = particles[i];
                 p.x += p.vx;
                 p.y += p.vy;
                 p.life--;
-                
+
                 if (p.life <= 0) {
                     particles.splice(i, 1);
                 }
             }
         }
-        
+
         function draw() {
             // Clear canvas
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
+
             // Draw stars
             ctx.fillStyle = '#fff';
             for (let star of stars) {
@@ -355,7 +616,7 @@
                 ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
                 ctx.fill();
             }
-            
+
             // Draw terrain
             ctx.strokeStyle = '#0f0';
             ctx.lineWidth = 2;
@@ -371,23 +632,23 @@
             ctx.lineTo(0, canvas.height);
             ctx.closePath();
             ctx.stroke();
-            
+
             // Draw landing pads
             for (let pad of landingPads) {
-                ctx.strokeStyle = pad.multiplier === 3 ? '#ff0' : 
+                ctx.strokeStyle = pad.multiplier === 3 ? '#ff0' :
                                   pad.multiplier === 2 ? '#0ff' : '#0f0';
                 ctx.lineWidth = 3;
                 ctx.beginPath();
                 ctx.moveTo(pad.x, pad.y);
                 ctx.lineTo(pad.x + pad.width, pad.y);
                 ctx.stroke();
-                
+
                 // Draw multiplier
                 ctx.fillStyle = ctx.strokeStyle;
                 ctx.font = '12px Courier New';
                 ctx.fillText(`${pad.multiplier}X`, pad.x + pad.width / 2 - 10, pad.y - 5);
             }
-            
+
             // Draw particles
             for (let p of particles) {
                 ctx.fillStyle = p.color;
@@ -395,16 +656,16 @@
                 ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
             }
             ctx.globalAlpha = 1;
-            
+
             // Draw lander
             if (gameState !== 'crashed') {
                 ctx.save();
                 ctx.translate(lander.x, lander.y);
                 ctx.rotate(lander.angle);
-                
+
                 ctx.strokeStyle = '#0f0';
                 ctx.lineWidth = 2;
-                
+
                 // Lander body
                 ctx.beginPath();
                 ctx.moveTo(-lander.width/2, lander.height/2);
@@ -413,7 +674,7 @@
                 ctx.lineTo(lander.width/2, lander.height/2);
                 ctx.closePath();
                 ctx.stroke();
-                
+
                 // Landing legs
                 ctx.beginPath();
                 ctx.moveTo(-lander.width/2, lander.height/2);
@@ -421,10 +682,10 @@
                 ctx.moveTo(lander.width/2, lander.height/2);
                 ctx.lineTo(lander.width/2 + 5, lander.height/2 + 8);
                 ctx.stroke();
-                
+
                 ctx.restore();
             }
-            
+
             // Update stats display
             document.getElementById('score').textContent = score;
             document.getElementById('fuel').textContent = Math.floor(lander.fuel);
@@ -435,30 +696,40 @@
             document.getElementById('vSpeed').textContent = Math.abs(lander.vy).toFixed(2);
             document.getElementById('vSpeed').className = Math.abs(lander.vy) > maxSafeLandingSpeed ? 'warning' : 'safe';
         }
-        
-        function gameLoop() {
-            updateLander();
-            updateParticles();
+
+        // Fixed 60 steps per second, so 90/120 Hz phone screens don't make the game run faster
+        let lastTime = performance.now();
+        let accumulator = 0;
+
+        function gameLoop(now) {
+            accumulator += Math.min(now - lastTime, 250);
+            lastTime = now;
+            while (accumulator >= STEP_MS) {
+                updateLander();
+                updateParticles();
+                accumulator -= STEP_MS;
+            }
             draw();
             requestAnimationFrame(gameLoop);
         }
-        
+
         // Initialize game
+        isTouch = detectTouch();
+        document.body.classList.toggle('touch', isTouch);
+        layout();
         initStars();
         generateTerrain();
         draw();
-        gameLoop();
-        
+        requestAnimationFrame((t) => { lastTime = t; gameLoop(t); });
+
         // Show initial message
-        document.getElementById('gameOverText').innerHTML = 
+        document.getElementById('gameOverText').innerHTML =
             `<div style="color: #0f0;">TEMARK LUNAR LANDER</div>
-             <div style="font-size: 16px; margin-top: 10px;">
+             <div class="sub">
              Land safely on the pads<br>
              Yellow = 3X | Cyan = 2X | Green = 1X</div>`;
+        updateHints();
         document.getElementById('gameOver').style.display = 'block';
     </script>
 </body>
 </html>
-
-
-
